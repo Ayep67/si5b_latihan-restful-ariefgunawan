@@ -12,6 +12,22 @@ const PORT = process.env.PORT || 3000; // sebelumnya: const PORT = 3000;
   next(); // wajib, agar request lanjut ke handler berikutnya
 }
 
+function cekApiKey(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+
+  if (apiKey !== process.env.API_KEY) {
+    return res.status(401).json({ message: 'API key tidak valid' });
+  }
+
+  next();
+}
+//function ini membuat error yang membawa kode status
+function errorHttp(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
 // Didaftarkan sebelum route agar mencatat seluruh request
 app.use(logger);
 	
@@ -53,23 +69,25 @@ app.use(express.json());
         }
 
         res.json(mahasiswa);
+
 });
+// ---------- Route ----------
     // GET /mahasiswa/:id -> menampilkan satu data berdasarkan id
     app.get('/mahasiswa/:id', (req, res) => {
         const id = parseInt(req.params.id);
         const data = mahasiswa.find((m) => m.id === id);
 
-    if (!data) return res.status(404).json({ message: 'Data tidak ditemukan' });
-    res.json(data);    
+    if (!data) return next(errorHttp(404, 'Data tidak ditemukan'));
+    res.json(data);
 });
 
 // POST /mahasiswa
 // Body: { "nama": "Citra", "jurusan": "Sistem Informasi" }
-app.post('/mahasiswa', (req, res) => {
+app.post('/mahasiswa', cekApiKey, (req, res) => {
   const { nama, jurusan } = req.body;
 
   if (!nama || !jurusan) {
-    return res.status(400).json({ message: 'nama dan jurusan wajib diisi' });
+    return next(errorHttp(404, 'nama dan jurusan wajib diisi'));
   }
 
   const mhsbaru = { id: nextId++, nama, jurusan };
@@ -80,20 +98,18 @@ app.post('/mahasiswa', (req, res) => {
 
 // PUT /mahasiswa/2
 // Body: { "nama": "Budi Santoso", "jurusan": "Informatika" }
-app.put('/mahasiswa/:id', (req, res) => {
+app.put('/mahasiswa/:id', cekApiKey, (req, res) => {
   const id = parseInt(req.params.id);
   const index = mahasiswa.findIndex((m) => m.id === id);
 
-  if (index === -1) {
-    return res.status(404).json({ message: 'Data tidak ditemukan' });
-  }
+  if (index === -1) return next(errorHttp(404, 'Data tidak ditemukan'));
 
   mahasiswa[index] = { ...mahasiswa[index], ...req.body, id };
   res.json(mahasiswa[index]);
 });
 
 // DELETE /mahasiswa/2
-app.delete('/mahasiswa/:id', (req, res) => {
+app.delete('/mahasiswa/:id', cekApiKey,(req, res) => {
   const id = parseInt(req.params.id);
   const index = mahasiswa.findIndex((m) => m.id === id);
 
