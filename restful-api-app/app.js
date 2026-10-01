@@ -21,6 +21,7 @@ function cekApiKey(req, res, next) {
 
   next();
 }
+
 //function ini membuat error yang membawa kode status
 function errorHttp(status, message) {
   const err = new Error(message);
@@ -73,7 +74,7 @@ app.use(express.json());
 });
 // ---------- Route ----------
     // GET /mahasiswa/:id -> menampilkan satu data berdasarkan id
-    app.get('/mahasiswa/:id', (req, res) => {
+    app.get('/mahasiswa/:id', (req, res, next) => {
         const id = parseInt(req.params.id);
         const data = mahasiswa.find((m) => m.id === id);
 
@@ -83,7 +84,7 @@ app.use(express.json());
 
 // POST /mahasiswa
 // Body: { "nama": "Citra", "jurusan": "Sistem Informasi" }
-app.post('/mahasiswa', cekApiKey, (req, res) => {
+app.post('/mahasiswa', cekApiKey, (req, res, next) => {
   const { nama, jurusan } = req.body;
 
   if (!nama || !jurusan) {
@@ -98,7 +99,7 @@ app.post('/mahasiswa', cekApiKey, (req, res) => {
 
 // PUT /mahasiswa/2
 // Body: { "nama": "Budi Santoso", "jurusan": "Informatika" }
-app.put('/mahasiswa/:id', cekApiKey, (req, res) => {
+app.put('/mahasiswa/:id', cekApiKey, (req, res, next) => {
   const id = parseInt(req.params.id);
   const index = mahasiswa.findIndex((m) => m.id === id);
 
@@ -109,7 +110,7 @@ app.put('/mahasiswa/:id', cekApiKey, (req, res) => {
 });
 
 // DELETE /mahasiswa/2
-app.delete('/mahasiswa/:id', cekApiKey,(req, res) => {
+app.delete('/mahasiswa/:id', cekApiKey,(req, res, next) => {
   const id = parseInt(req.params.id);
   const index = mahasiswa.findIndex((m) => m.id === id);
 
@@ -121,6 +122,27 @@ app.delete('/mahasiswa/:id', cekApiKey,(req, res) => {
   res.status(204).send();
 });
 
+// Handler 404: rute yang tidak ada
+app.use((req, res) => {
+  res.status(404).json({ message: `Rute ${req.method} ${req.originalUrl} tidak ditemukan` });
+});
+
+// Error handler: WAJIB 4 parameter
+app.use((err, req, res, next) => {
+  // Body JSON yang rusak (dilempar oleh express.json())
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Format JSON tidak valid' });
+  }
+
+  const status = err.status || 500;
+
+  if (status === 500) {
+    console.error(err.stack); // detail hanya dicatat di server
+    return res.status(500).json({ message: 'Terjadi kesalahan pada server' });
+  }
+
+  res.status(status).json({ message: err.message });
+});
 	app.listen(PORT, () => {
 	  console.log(`Server berjalan di http://localhost:${PORT}`);
 });
